@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions | Aurelia{% endblock %}
+
+{% block content %}
+<main class="dashboard-shell">
+    <div class="container">
+        <div class="page-header">
+            <div>
+                <p class="eyebrow">PORTFOLIO ACTIVITY</p>
+                <h1>Buy and <em>sell.</em></h1>
+                <p class="dashboard-subtitle">Record your investment decisions with a clear, auditable history.</p>
+            </div>
+        </div>
+
+        <section class="transaction-layout">
+            <div class="panel-card transaction-form-card">
+                <div class="panel-heading"><div><p class="eyebrow">NEW TRANSACTION</p><h2>Record an activity</h2></div></div>
+                <form method="post" class="transaction-form" id="transaction-form">
+                    <input type="hidden" name="submission_token" value="{{ submission_token }}">
+                    <div class="transaction-type" role="group" aria-label="Transaction type">
+                        <label><input type="radio" name="transaction_type" value="BUY" checked><span>Buy</span></label>
+                        <label><input type="radio" name="transaction_type" value="SELL"><span>Sell</span></label>
+                    </div>
+                    <div class="field-group">
+                        <label for="stock_id">Stock</label>
+                        <select id="stock_id" name="stock_id" required>
+                            <option value="">Select a stock</option>
+                            {% for stock in stocks %}
+                                <option value="{{ stock.stock_id }}">{{ stock.symbol }} — {{ stock.company_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="transaction-fields">
+                        <div class="field-group">
+                            <label for="quantity">Quantity</label>
+                            <input id="quantity" name="quantity" type="number" min="0.000001" step="0.000001" required placeholder="0.000000">
+                        </div>
+                        <div class="field-group">
+                            <label for="price_per_share">Price per share</label>
+                            <input id="price_per_share" name="price_per_share" type="number" min="0.000001" step="0.000001" required placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label for="transaction_date">Transaction date</label>
+                        <input id="transaction_date" name="transaction_date" type="date" value="{{ today }}" required>
+                    </div>
+                    <div class="transaction-summary" aria-live="polite">
+                        <span>Estimated transaction value</span>
+                        <strong id="transaction-total">—</strong>
+                    </div>
+                    <p class="form-note">Holdings use a weighted-average cost basis. Current market prices are only shown when historical price data exists.</p>
+                    <button class="btn-gold btn-submit" type="submit">Save transaction <span>→</span></button>
+                </form>
+            </div>
+
+            <div class="panel-card method-card">
+                <p class="eyebrow">HOW IT WORKS</p>
+                <h2>A considered record.</h2>
+                <p>Every buy increases your shares and cost basis. Every sell reduces both using the average cost of the shares held at that moment.</p>
+                <div class="method-rule"></div>
+                <p class="method-caption">Sales above your average cost contribute to realized profit. Sales below it contribute to realized loss.</p>
+            </div>
+        </section>
+
+        <section class="panel-card history-panel">
+            <div class="panel-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Transaction history</h2></div></div>
+            <form class="history-filters" method="get">
+                <select name="stock_id" aria-label="Filter by stock">
+                    <option value="">All stocks</option>
+                    {% for stock in stocks %}<option value="{{ stock.stock_id }}" {% if filters.get("stock_id") == stock.stock_id|string %}selected{% endif %}>{{ stock.symbol }}</option>{% endfor %}
+                </select>
+                <select name="transaction_type" aria-label="Filter by type">
+                    <option value="">Buy and sell</option>
+                    <option value="BUY" {% if filters.get("transaction_type") == "BUY" %}selected{% endif %}>Buy only</option>
+                    <option value="SELL" {% if filters.get("transaction_type") == "SELL" %}selected{% endif %}>Sell only</option>
+                </select>
+                <input type="date" name="transaction_date" aria-label="Filter by date" value="{{ filters.get('transaction_date', '') }}">
+                <button class="filter-button" type="submit">Filter</button>
+                <a class="clear-filter" href="{{ url_for('transactions') }}">Clear</a>
+            </form>
+            {% if history %}
+                <div class="watchlist-table-wrap">
+                    <table class="watchlist-table">
+                        <thead><tr><th>Security</th><th>Type</th><th>Quantity</th><th>Price</th><th>Date</th><th class="text-end">Value</th></tr></thead>
+                        <tbody>
+                            {% for item in history %}
+                                <tr>
+                                    <td><span class="stock-symbol">{{ item.symbol }}</span><small>{{ item.company_name }}</small></td>
+                                    <td><span class="transaction-badge {{ item.transaction_type|lower }}">{{ item.transaction_type }}</span></td>
+                                    <td>{{ "{:,.6f}".format(item.quantity) }}</td>
+                                    <td>${{ "{:,.2f}".format(item.price_per_share) }}</td>
+                                    <td class="muted-cell">{{ item.transaction_date.strftime("%d %b %Y") }}</td>
+                                    <td class="text-end">${{ "{:,.2f}".format(item.quantity * item.price_per_share) }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state table-empty"><span class="empty-icon">○</span><p>No transactions found</p><small>Your saved buy and sell activity will appear here.</small></div>
+            {% endif %}
+        </section>
+    </div>
+</main>
+{% endblock %}

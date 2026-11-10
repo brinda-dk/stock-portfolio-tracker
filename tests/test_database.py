@@ -1,5 +1,8 @@
 from unittest.mock import Mock
 
+from datetime import date
+from decimal import Decimal
+
 from mysql.connector import IntegrityError
 from services.user_service import (
     create_user,
@@ -10,6 +13,10 @@ from services.stock_service import (
     add_to_watchlist,
     get_user_watchlist,
     search_stocks,
+)
+from services.transaction_service import (
+    get_holdings,
+    record_transaction,
 )
 
 
@@ -68,3 +75,167 @@ def test_duplicate_watchlist_entry_rolls_back_without_success():
     assert not add_to_watchlist(connection, 42, 7)
     connection.rollback.assert_called_once()
     connection.commit.assert_not_called()
+
+
+def test_buy_transaction_commits_parameterized_insert():
+    connection = Mock()
+    cursor = connection.cursor.return_value
+    cursor.fetchone.return_value = {"stock_id": 7}
+    cursor.fetchall.return_value = []
+
+    record_transaction(
+        connection,
+        42,
+        7,
+        "BUY",
+        Decimal("2.5"),
+        Decimal("100.25"),
+        date(2026, 11, 10),
+    )
+
+    connection.start_transaction.assert_called_once()
+    connection.commit.assert_called_once()
+    query, parameters = cursor.execute.call_args_list[-1].args
+    assert "INSERT INTO transactions" in query
+    assert parameters[:3] == (42, 7, "BUY")
+
+
+def test_sell_transaction_rejects_oversell_and_rolls_back():
+    connection = Mock()
+    cursor = connection.cursor.return_value
+    cursor.fetchone.return_value = {"stock_id": 7}
+    cursor.fetchall.return_value = [
+        {
+            "transaction_type": "BUY",
+            "quantity": Decimal("2"),
+            "price_per_share": Decimal("100"),
+        }
+    ]
+
+    try:
+        record_transaction(
+            connection,
+            42,
+            7,
+            "SELL",
+            Decimal("3"),
+            Decimal("110"),
+            date(2026, 11, 10),
+        )
+    except ValueError as exc:
+        assert "at most" in str(exc)
+    else:
+        raise AssertionError("Oversell should be rejected")
+
+    connection.rollback.assert_called_once()
+    connection.commit.assert_not_called()
+    assert len(cursor.execute.call_args_list) == 2
+
+
+def test_failed_insert_rolls_back_without_commit():
+    connection = Mock()
+    cursor = connection.cursor.return_value
+    cursor.fetchone.return_value = {"stock_id": 7}
+    cursor.fetchall.return_value = []
+    cursor.execute.side_effect = [
+        None,
+        None,
+        RuntimeError("insert failed"),
+    ]
+
+    try:
+        record_transaction(
+            connection,
+            42,
+            7,
+            "BUY",
+            Decimal("1"),
+            Decimal("10"),
+            date(2026, 11, 10),
+        )
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("Failed insert should raise")
+
+    connection.rollback.assert_called_once()
+    connection.commit.assert_not_called()
+
+
+def test_record_transaction_rejects_invalid_stock_id():
+    connection = Mock()
+    cursor = connection.cursor.return_value
+    cursor.fetchone.return_value = None
+
+    try:
+        record_transaction(
+            connection,
+            42,
+            999,
+            "BUY",
+            Decimal("1"),
+            Decimal("10"),
+            date(2026, 11, 10),
+        )
+    except ValueError as exc:
+        assert "does not exist" in str(exc)
+    else:
+        raise AssertionError("Invalid stock should be rejected")
+
+    connection.rollback.assert_called_once()
+    connection.commit.assert_not_called()
+
+
+def test_holdings_calculate_buy_sell_weighted_average():
+    connection = Mock()
+    cursor = connection.cursor.return_value
+    cursor.fetchall.side_effect = [
+        [
+            {
+                "stock_id": 7,
+                "symbol": "AAPL",
+                "company_name": "Apple Inc.",
+                "transaction_type": "BUY",
+                "quantity": Decimal("10"),
+                "price_per_share": Decimal("100"),
+                "transaction_date": date(2026, 1, 1),
+                "transaction_id": 1,
+            },
+            {
+                "stock_id": 7,
+                "symbol": "AAPL",
+                "company_name": "Apple Inc.",
+                "transaction_type": "BUY",
+                "quantity": Decimal("10"),
+                "price_per_share": Decimal("120"),
+                "transaction_date": date(2026, 1, 2),
+                "transaction_id": 2,
+            },
+            {
+                "stock_id": 7,
+                "symbol": "AAPL",
+                "company_name": "Apple Inc.",
+                "transaction_type": "SELL",
+                "quantity": Decimal("5"),
+                "price_per_share": Decimal("130"),
+                "transaction_date": date(2026, 1, 3),
+                "transaction_id": 3,
+            },
+        ],
+        [
+            {
+                "stock_id": 7,
+                "close_price": Decimal("125"),
+                "price_date": date(2026, 1, 4),
+            }
+        ],
+    ]
+
+    holdings = get_holdings(connection, 42)
+
+    assert holdings[0]["current_quantity"] == Decimal("15")
+    assert holdings[0]["remaining_cost_basis"] == Decimal("1650")
+    assert holdings[0]["average_cost"] == Decimal("110")
+    assert holdings[0]["realized_profit_loss"] == Decimal("100")
+    assert holdings[0]["market_value"] == Decimal("1875")
+    assert holdings[0]["unrealized_profit_loss"] == Decimal("225")

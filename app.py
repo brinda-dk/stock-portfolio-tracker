@@ -1,4 +1,6 @@
 import os
+from datetime import date
+from decimal import Decimal, InvalidOperation
 from functools import wraps
 
 import click
@@ -111,7 +113,142 @@ def create_app() -> Flask:
     @app.get("/dashboard")
     @login_required
     def dashboard():
-        return render_template("dashboard.html", user_name=session["user_name"])
+        from services.database import get_db_connection
+        from services.transaction_service import get_holdings
+
+        connection = get_db_connection()
+        try:
+            holdings = get_holdings(connection, session["user_id"])
+        finally:
+            connection.close()
+        total_cost = sum(
+            (holding["remaining_cost_basis"] for holding in holdings),
+            Decimal("0"),
+        )
+        total_value = (
+            sum(
+                (holding["market_value"] for holding in holdings),
+                Decimal("0"),
+            )
+            if all(holding["market_value"] is not None for holding in holdings)
+            and holdings
+            else None
+        )
+        unrealized = (
+            total_value - total_cost if total_value is not None else None
+        )
+        realized = sum(
+            (holding["realized_profit_loss"] for holding in holdings),
+            Decimal("0"),
+        )
+        return render_template(
+            "dashboard.html",
+            user_name=session["user_name"],
+            holdings=holdings,
+            total_cost=total_cost,
+            total_value=total_value,
+            unrealized=unrealized,
+            realized=realized,
+        )
+
+    @app.route("/transactions", methods=["GET", "POST"])
+    @login_required
+    def transactions():
+        from services.database import get_db_connection
+        from services.transaction_service import (
+            get_transaction_history,
+            list_stocks,
+            new_submission_token,
+            record_transaction,
+        )
+
+        if "transaction_submission_token" not in session:
+            session["transaction_submission_token"] = new_submission_token()
+
+        if request.method == "POST":
+            submitted_token = request.form.get("submission_token", "")
+            transaction_type = request.form.get("transaction_type", "").upper()
+            stock_id_text = request.form.get("stock_id", "")
+            quantity_text = request.form.get("quantity", "").strip()
+            price_text = request.form.get("price_per_share", "").strip()
+            transaction_date_text = request.form.get("transaction_date", "").strip()
+
+            if submitted_token != session.get("transaction_submission_token"):
+                flash("This transaction form has already been submitted.", "warning")
+            else:
+                error = None
+                try:
+                    stock_id = int(stock_id_text)
+                    quantity = Decimal(quantity_text)
+                    price = Decimal(price_text)
+                    transaction_date = date.fromisoformat(transaction_date_text)
+                except (InvalidOperation, TypeError, ValueError):
+                    error = "Enter a valid stock, quantity, price, and date."
+
+                if error is None and transaction_type not in {"BUY", "SELL"}:
+                    error = "Choose either Buy or Sell."
+                elif error is None and (
+                    not quantity.is_finite()
+                    or not price.is_finite()
+                    or quantity <= 0
+                    or price <= 0
+                ):
+                    error = "Quantity and price must both be greater than zero."
+
+                if error:
+                    flash(error, "danger")
+                else:
+                    connection = get_db_connection()
+                    try:
+                        record_transaction(
+                            connection,
+                            session["user_id"],
+                            stock_id,
+                            transaction_type,
+                            quantity,
+                            price,
+                            transaction_date,
+                        )
+                    except ValueError as exc:
+                        flash(str(exc), "danger")
+                    else:
+                        session.pop("transaction_submission_token", None)
+                        flash("Transaction recorded successfully.", "success")
+                        return redirect(url_for("transactions"))
+                    finally:
+                        connection.close()
+
+        connection = get_db_connection()
+        try:
+            stocks = list_stocks(connection)
+            filters = {}
+            stock_filter = request.args.get("stock_id", "").strip()
+            type_filter = request.args.get("transaction_type", "").upper()
+            date_filter = request.args.get("transaction_date", "").strip()
+            if stock_filter.isdigit():
+                filters["stock_id"] = int(stock_filter)
+            if type_filter in {"BUY", "SELL"}:
+                filters["transaction_type"] = type_filter
+            if date_filter:
+                try:
+                    filters["transaction_date"] = date.fromisoformat(date_filter)
+                except ValueError:
+                    flash("The history date filter is invalid.", "danger")
+            history = get_transaction_history(
+                connection,
+                session["user_id"],
+                filters,
+            )
+        finally:
+            connection.close()
+        return render_template(
+            "transactions.html",
+            stocks=stocks,
+            history=history,
+            today=date.today().isoformat(),
+            filters=request.args,
+            submission_token=session["transaction_submission_token"],
+        )
 
     @app.get("/stocks")
     @login_required

@@ -27,6 +27,7 @@
                         <li class="nav-item"><a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a></li>
                         <li class="nav-item"><a class="nav-link {% if request.endpoint == 'stock_explorer' %}active{% endif %}" href="{{ url_for('stock_explorer') }}">Stocks</a></li>
                         <li class="nav-item"><a class="nav-link {% if request.endpoint == 'watchlist' %}active{% endif %}" href="{{ url_for('watchlist') }}">Watchlist</a></li>
+                        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'transactions' %}active{% endif %}" href="{{ url_for('transactions') }}">Transactions</a></li>
                         <li class="nav-item ms-lg-2"><a class="nav-logout" href="{{ url_for('logout') }}">Log out</a></li>
                     {% else %}
                         <li class="nav-item"><a class="nav-link {% if request.endpoint == 'login' %}active{% endif %}" href="{{ url_for('login') }}">Sign in</a></li>

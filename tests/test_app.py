@@ -91,7 +91,10 @@ def test_login_sets_session_and_logout_clears_it():
         "password_hash": hash_user_password("correct-password"),
     }
 
-    with patch("services.database.get_db_connection", return_value=connection):
+    with (
+        patch("services.database.get_db_connection", return_value=connection),
+        patch("services.transaction_service.get_holdings", return_value=[]),
+    ):
         client = app.test_client()
         login_response = client.post(
             "/login",
@@ -165,6 +168,78 @@ def test_add_watchlist_validates_stock_and_uses_current_user():
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/stocks")
     add.assert_called_once_with(connection, 12, 7)
+
+
+def test_transactions_route_requires_login():
+    app = create_app()
+
+    response = app.test_client().get("/transactions")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/login")
+
+
+def test_transaction_route_rejects_invalid_quantity_before_database_write():
+    app = create_app()
+    client = client_session(app, user_id=12)
+
+    with (
+        patch("services.database.get_db_connection", return_value=Mock()),
+        patch("services.transaction_service.list_stocks", return_value=[]),
+        patch(
+            "services.transaction_service.get_transaction_history",
+            return_value=[],
+        ),
+        patch("services.transaction_service.record_transaction") as record,
+    ):
+        response = client.post(
+            "/transactions",
+            data={
+                "submission_token": "unused",
+                "transaction_type": "BUY",
+                "stock_id": "7",
+                "quantity": "0",
+                "price_per_share": "10",
+                "transaction_date": "2026-11-10",
+            },
+        )
+
+    assert response.status_code == 200
+    record.assert_not_called()
+
+
+def test_transaction_route_uses_authenticated_user_and_redirects():
+    app = create_app()
+    client = client_session(app, user_id=12)
+    connection = Mock()
+
+    with (
+        patch("services.database.get_db_connection", return_value=connection),
+        patch("services.transaction_service.list_stocks", return_value=[]),
+        patch(
+            "services.transaction_service.get_transaction_history",
+            return_value=[],
+        ),
+        patch("services.transaction_service.record_transaction") as record,
+    ):
+        with client.session_transaction() as session:
+            session["transaction_submission_token"] = "valid-token"
+        response = client.post(
+            "/transactions",
+            data={
+                "submission_token": "valid-token",
+                "transaction_type": "BUY",
+                "stock_id": "7",
+                "quantity": "2",
+                "price_per_share": "10.50",
+                "transaction_date": "2026-11-10",
+            },
+        )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/transactions")
+    record.assert_called_once()
+    assert record.call_args.args[1:4] == (12, 7, "BUY")
 
 
 def client_session(app, user_id):

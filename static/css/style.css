@@ -138,6 +138,40 @@ em { color: var(--gold-light); font-style: normal; }
 .empty-state small { font-size: 0.72rem; max-width: 200px; }
 .holdings-panel { min-height: 250px; }
 .table-empty { min-height: 140px; }
+.dashboard-link { margin-top: 1.2rem; }
+.holdings-table-wrap { overflow-x: auto; }
+.holdings-table { border-collapse: collapse; min-width: 760px; width: 100%; }
+.holdings-table th { color: #929bae; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.1em; padding: 1.1rem 0.8rem; text-align: left; text-transform: uppercase; }
+.holdings-table td { border-top: 1px solid rgba(11, 18, 32, 0.08); color: #394354; font-size: 0.82rem; padding: 1rem 0.8rem; white-space: nowrap; }
+.holdings-table td small, .watchlist-table td small { color: #929bae; display: block; font-size: 0.68rem; margin-top: 0.25rem; }
+.transaction-layout { display: grid; gap: 1.5rem; grid-template-columns: 1.5fr 1fr; margin-bottom: 1.5rem; }
+.transaction-form-card, .method-card { min-height: 100%; }
+.transaction-form { margin-top: 1.5rem; }
+.transaction-form select, .transaction-form input, .history-filters select, .history-filters input { background: var(--ivory); border: 1px solid rgba(11, 18, 32, 0.15); color: var(--midnight); font: inherit; padding: 0.8rem 0.9rem; width: 100%; }
+.transaction-form select:focus, .transaction-form input:focus, .history-filters select:focus, .history-filters input:focus { border-color: #8f6e32; box-shadow: 0 0 0 3px rgba(212, 175, 112, 0.14); outline: none; }
+.transaction-type { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+.transaction-type label { flex: 1; }
+.transaction-type input { opacity: 0; position: absolute; }
+.transaction-type span { border: 1px solid rgba(11, 18, 32, 0.15); color: #687181; cursor: pointer; display: block; padding: 0.75rem; text-align: center; transition: background var(--ease), border var(--ease), color var(--ease); }
+.transaction-type input:checked + span { background: var(--midnight); border-color: var(--midnight); color: var(--gold-light); }
+.transaction-fields { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr; }
+.transaction-summary { align-items: center; border-bottom: 1px solid rgba(11, 18, 32, 0.1); border-top: 1px solid rgba(11, 18, 32, 0.1); display: flex; justify-content: space-between; margin: 0.25rem 0 1rem; padding: 1rem 0; }
+.transaction-summary span { color: #687181; font-size: 0.72rem; text-transform: uppercase; }
+.transaction-summary strong { color: #8f6e32; font-family: "Playfair Display", serif; font-size: 1.4rem; }
+.form-note { color: #929bae; font-size: 0.7rem; line-height: 1.5; }
+.method-card { background: var(--charcoal); color: var(--ivory); }
+.method-card h2 { font-size: 2rem; margin: 2rem 0 1rem; }
+.method-card > p:not(.eyebrow) { color: var(--slate-light); line-height: 1.8; }
+.method-rule { border-top: 1px solid var(--line); margin: 2rem 0; width: 70px; }
+.method-caption { font-size: 0.78rem; }
+.history-panel { padding: 1.7rem; }
+.history-filters { align-items: center; display: grid; gap: 0.65rem; grid-template-columns: 1.2fr 1fr 1fr auto auto; margin: 1.5rem 0; }
+.history-filters select, .history-filters input { font-size: 0.75rem; padding: 0.65rem 0.7rem; }
+.filter-button { background: var(--midnight); border: 1px solid var(--midnight); color: var(--gold-light); cursor: pointer; font-size: 0.7rem; padding: 0.7rem 0.9rem; text-transform: uppercase; }
+.clear-filter { color: #8f6e32; font-size: 0.7rem; }
+.transaction-badge { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; }
+.transaction-badge.buy { color: #557b5a; }
+.transaction-badge.sell { color: #9a5d58; }
 .explorer-panel { margin-bottom: 1.5rem; }
 .search-form label { color: #687181; display: block; font-size: 0.72rem; letter-spacing: 0.08em; margin-bottom: 0.55rem; text-transform: uppercase; }
 .search-row { display: flex; gap: 0.75rem; }
@@ -179,6 +213,8 @@ em { color: var(--gold-light); font-style: normal; }
     .hero-ornament { opacity: 0.45; right: -110px; }
     .metric-grid { grid-template-columns: repeat(2, 1fr); }
     .stock-grid { grid-template-columns: repeat(2, 1fr); }
+    .transaction-layout { grid-template-columns: 1fr; }
+    .history-filters { grid-template-columns: 1fr 1fr 1fr auto auto; }
 }
 @media (max-width: 767px) {
     .site-nav { min-height: 70px; }
@@ -196,10 +232,14 @@ em { color: var(--gold-light); font-style: normal; }
     .page-header { align-items: start; display: block; }
     .page-header .quiet-action { display: inline-block; margin-top: 1.2rem; }
     .stock-grid { grid-template-columns: 1fr; }
+    .history-filters { grid-template-columns: 1fr 1fr; }
+    .history-filters .filter-button { width: 100%; }
 }
 @media (max-width: 480px) {
     .metric-grid { grid-template-columns: 1fr; }
     .hero-actions { align-items: start; flex-direction: column; }
     .field-hint { display: block; float: none; margin-top: 0.25rem; }
     .search-row { align-items: stretch; flex-direction: column; }
+    .transaction-fields { grid-template-columns: 1fr; }
+    .history-filters { grid-template-columns: 1fr; }
 }

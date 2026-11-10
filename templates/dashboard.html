@@ -15,10 +15,10 @@
         </div>
 
         <section class="metric-grid" aria-label="Portfolio summary">
-            <div class="metric-card"><span class="metric-label">Portfolio value</span><strong>—</strong><small>Awaiting holdings</small></div>
-            <div class="metric-card"><span class="metric-label">Total invested</span><strong>—</strong><small>No transactions yet</small></div>
-            <div class="metric-card"><span class="metric-label">Profit / loss</span><strong>—</strong><small>Will appear after activity</small></div>
-            <div class="metric-card"><span class="metric-label">Return</span><strong>—</strong><small>Not calculated yet</small></div>
+            <div class="metric-card"><span class="metric-label">Portfolio value</span><strong>{{ "${:,.2f}".format(total_value) if total_value is not none else "—" }}</strong><small>{{ "Latest recorded prices" if total_value is not none else "Price unavailable" }}</small></div>
+            <div class="metric-card"><span class="metric-label">Remaining cost basis</span><strong>{{ "${:,.2f}".format(total_cost) }}</strong><small>Weighted-average method</small></div>
+            <div class="metric-card"><span class="metric-label">Unrealized P/L</span><strong>{{ "${:,.2f}".format(unrealized) if unrealized is not none else "—" }}</strong><small>{{ "Based on latest close" if unrealized is not none else "Price unavailable" }}</small></div>
+            <div class="metric-card"><span class="metric-label">Realized P/L</span><strong>${{ "{:,.2f}".format(realized) }}</strong><small>Weighted-average method</small></div>
         </section>
 
         <section class="dashboard-grid">
@@ -27,14 +27,34 @@
                 <div class="empty-chart"><div class="chart-line"></div><p>Your performance curve will appear here once you add holdings.</p></div>
             </div>
             <div class="panel-card">
-                <div class="panel-heading"><div><p class="eyebrow">WATCHLIST</p><h2>Keep an eye on</h2></div></div>
-                <div class="empty-state"><span class="empty-icon">◇</span><p>Your watchlist is waiting.</p><small>Stocks you follow will appear here.</small></div>
+                <div class="panel-heading"><div><p class="eyebrow">NEXT STEP</p><h2>Build your view</h2></div></div>
+                <div class="empty-state"><span class="empty-icon">＋</span><p>Record your first transaction.</p><small>Buy or sell shares to begin building your holdings.</small><a class="quiet-action dashboard-link" href="{{ url_for('transactions') }}">Open transactions <span>→</span></a></div>
             </div>
         </section>
 
         <section class="panel-card holdings-panel">
-            <div class="panel-heading"><div><p class="eyebrow">YOUR PORTFOLIO</p><h2>Holdings</h2></div></div>
-            <div class="empty-state table-empty"><span class="empty-icon">○</span><p>No holdings yet</p><small>Your holdings will be shown here when portfolio activity is available.</small></div>
+            <div class="panel-heading"><div><p class="eyebrow">YOUR PORTFOLIO</p><h2>Holdings</h2></div><a class="quiet-action" href="{{ url_for('transactions') }}">Manage transactions <span>→</span></a></div>
+            {% if holdings %}
+                <div class="holdings-table-wrap">
+                    <table class="holdings-table">
+                        <thead><tr><th>Security</th><th>Shares</th><th>Avg. cost</th><th>Market price</th><th>Market value</th><th>Unrealized P/L</th></tr></thead>
+                        <tbody>
+                            {% for holding in holdings %}
+                                <tr>
+                                    <td><span class="stock-symbol">{{ holding.symbol }}</span><small>{{ holding.company_name }}</small></td>
+                                    <td>{{ "{:,.6f}".format(holding.current_quantity) }}</td>
+                                    <td>${{ "{:,.2f}".format(holding.average_cost) }}</td>
+                                    <td>{{ "${:,.2f}".format(holding.current_price) if holding.current_price is not none else "Price unavailable" }}</td>
+                                    <td>{{ "${:,.2f}".format(holding.market_value) if holding.market_value is not none else "—" }}</td>
+                                    <td>{{ "${:,.2f}".format(holding.unrealized_profit_loss) if holding.unrealized_profit_loss is not none else "—" }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state table-empty"><span class="empty-icon">○</span><p>No holdings yet</p><small>Your holdings will be shown here after a successful buy transaction.</small></div>
+            {% endif %}
         </section>
     </div>
 </main>
