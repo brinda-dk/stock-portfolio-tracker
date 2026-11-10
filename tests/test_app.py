@@ -143,6 +143,41 @@ def test_stock_explorer_search_uses_database_results():
     assert b"AAPL" in response.data
 
 
+def test_stock_explorer_shows_empty_database_message():
+    app = create_app()
+    connection = Mock()
+    connection.cursor.return_value.fetchall.return_value = []
+
+    with patch("services.database.get_db_connection", return_value=connection):
+        response = client_session(app, user_id=12).get("/stocks")
+
+    assert response.status_code == 200
+    assert b"No stocks available yet" in response.data
+    assert b"Add a stock" in response.data
+
+
+def test_add_stock_uses_parameterized_create_and_redirects_to_transactions():
+    app = create_app()
+    connection = Mock()
+
+    with (
+        patch("services.database.get_db_connection", return_value=connection),
+        patch("services.stock_service.create_stock", return_value=True) as create,
+    ):
+        response = client_session(app, user_id=12).post(
+            "/stocks/add",
+            data={
+                "symbol": "AAPL",
+                "company_name": "Apple Inc.",
+                "exchange_name": "NASDAQ",
+            },
+        )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/transactions")
+    create.assert_called_once_with(connection, "AAPL", "Apple Inc.", "NASDAQ")
+
+
 def test_add_watchlist_validates_stock_and_uses_current_user():
     app = create_app()
     connection = Mock()
@@ -240,6 +275,35 @@ def test_transaction_route_uses_authenticated_user_and_redirects():
     assert response.headers["Location"].endswith("/transactions")
     record.assert_called_once()
     assert record.call_args.args[1:4] == (12, 7, "BUY")
+
+
+def test_transaction_form_renders_stock_id_and_readable_label():
+    app = create_app()
+    connection = Mock()
+    stocks = [
+        {
+            "stock_id": 7,
+            "symbol": "AAPL",
+            "company_name": "Apple Inc.",
+            "exchange_name": "NASDAQ",
+        }
+    ]
+
+    with (
+        patch("services.database.get_db_connection", return_value=connection),
+        patch("services.transaction_service.list_stocks", return_value=stocks),
+        patch(
+            "services.transaction_service.get_transaction_history",
+            return_value=[],
+        ),
+    ):
+        response = client_session(app, user_id=12).get("/transactions")
+
+    assert response.status_code == 200
+    assert b'<option value="7" data-search="AAPL Apple Inc. NASDAQ">AAPL' in response.data
+    assert b"Apple Inc." in response.data
+    assert b"NASDAQ" in response.data
+    assert b'data-search="AAPL Apple Inc. NASDAQ"' in response.data
 
 
 def client_session(app, user_id):

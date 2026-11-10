@@ -149,6 +149,8 @@ em { color: var(--gold-light); font-style: normal; }
 .transaction-form { margin-top: 1.5rem; }
 .transaction-form select, .transaction-form input, .history-filters select, .history-filters input { background: var(--ivory); border: 1px solid rgba(11, 18, 32, 0.15); color: var(--midnight); font: inherit; padding: 0.8rem 0.9rem; width: 100%; }
 .transaction-form select:focus, .transaction-form input:focus, .history-filters select:focus, .history-filters input:focus { border-color: #8f6e32; box-shadow: 0 0 0 3px rgba(212, 175, 112, 0.14); outline: none; }
+.stock-filter-input { margin-bottom: 0.5rem; }
+.field-help { color: #929bae; display: block; font-size: 0.68rem; margin-top: 0.45rem; }
 .transaction-type { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
 .transaction-type label { flex: 1; }
 .transaction-type input { opacity: 0; position: absolute; }
@@ -196,6 +198,17 @@ em { color: var(--gold-light); font-style: normal; }
 .empty-result h2 { font-size: 1.6rem; margin: 0.2rem 0 0.7rem; }
 .empty-result p { color: #687181; margin: 0 auto; max-width: 430px; }
 .empty-action { margin-top: 1.5rem; }
+.stock-management { margin-bottom: 1.5rem; }
+.stock-management summary { color: #8f6e32; cursor: pointer; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.stock-management .form-note { margin: 1rem 0; }
+.stock-add-form { display: grid; gap: 0.65rem; grid-template-columns: 0.7fr 1.5fr 0.8fr auto; margin-top: 1rem; }
+.stock-add-form input { background: var(--ivory); border: 1px solid rgba(11, 18, 32, 0.15); color: var(--midnight); font: inherit; min-width: 0; padding: 0.7rem 0.8rem; }
+.stock-add-form input:focus { border-color: #8f6e32; outline: none; }
+.stock-select-empty { background: rgba(212, 175, 112, 0.09); border: 1px dashed rgba(143, 110, 50, 0.45); padding: 0.9rem; }
+.stock-select-empty p { color: #687181; font-size: 0.78rem; margin: 0 0 0.45rem; }
+.stock-select-empty a { color: #8f6e32; font-size: 0.72rem; text-transform: uppercase; }
+.stock-select-empty span { font-size: 1rem; margin-left: 0.3rem; }
+.transaction-form .btn-submit:disabled { cursor: not-allowed; opacity: 0.5; transform: none; }
 .watchlist-panel { padding: 0; }
 .watchlist-table-wrap { overflow-x: auto; }
 .watchlist-table { border-collapse: collapse; min-width: 650px; width: 100%; }
@@ -215,6 +228,7 @@ em { color: var(--gold-light); font-style: normal; }
     .stock-grid { grid-template-columns: repeat(2, 1fr); }
     .transaction-layout { grid-template-columns: 1fr; }
     .history-filters { grid-template-columns: 1fr 1fr 1fr auto auto; }
+    .stock-add-form { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 767px) {
     .site-nav { min-height: 70px; }
@@ -234,6 +248,7 @@ em { color: var(--gold-light); font-style: normal; }
     .stock-grid { grid-template-columns: 1fr; }
     .history-filters { grid-template-columns: 1fr 1fr; }
     .history-filters .filter-button { width: 100%; }
+    .stock-add-form { grid-template-columns: 1fr; }
 }
 @media (max-width: 480px) {
     .metric-grid { grid-template-columns: 1fr; }

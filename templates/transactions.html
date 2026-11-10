@@ -24,12 +24,21 @@
                     </div>
                     <div class="field-group">
                         <label for="stock_id">Stock</label>
-                        <select id="stock_id" name="stock_id" required>
-                            <option value="">Select a stock</option>
-                            {% for stock in stocks %}
-                                <option value="{{ stock.stock_id }}">{{ stock.symbol }} — {{ stock.company_name }}</option>
-                            {% endfor %}
-                        </select>
+                        {% if stocks %}
+                            <input class="stock-filter-input" id="stock-filter" type="search" placeholder="Type to filter stocks by symbol or name" autocomplete="off">
+                            <select id="stock_id" name="stock_id" required>
+                                <option value="">Select a stock</option>
+                                {% for stock in stocks %}
+                                    <option value="{{ stock.stock_id }}" data-search="{{ stock.symbol }} {{ stock.company_name }} {{ stock.exchange_name }}">{{ stock.symbol }} — {{ stock.company_name }} ({{ stock.exchange_name }})</option>
+                                {% endfor %}
+                            </select>
+                            <small class="field-help" id="stock-filter-status">{{ stocks|length }} stock{{ "" if stocks|length == 1 else "s" }} available</small>
+                        {% else %}
+                            <div class="stock-select-empty">
+                                <p>No stocks are available in your database yet.</p>
+                                <a href="{{ url_for('stock_explorer') }}">Open Stock Explorer to add one <span>→</span></a>
+                            </div>
+                        {% endif %}
                     </div>
                     <div class="transaction-fields">
                         <div class="field-group">
@@ -50,7 +59,7 @@
                         <strong id="transaction-total">—</strong>
                     </div>
                     <p class="form-note">Holdings use a weighted-average cost basis. Current market prices are only shown when historical price data exists.</p>
-                    <button class="btn-gold btn-submit" type="submit">Save transaction <span>→</span></button>
+                    <button class="btn-gold btn-submit" type="submit" {% if not stocks %}disabled{% endif %}>Save transaction <span>→</span></button>
                 </form>
             </div>
 

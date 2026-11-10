@@ -37,6 +37,31 @@ def find_stock_by_id(connection: MySQLConnection, stock_id: int):
         cursor.close()
 
 
+def create_stock(
+    connection: MySQLConnection,
+    symbol: str,
+    company_name: str,
+    exchange_name: str,
+) -> bool:
+    """Create one stock without replacing or modifying existing records."""
+    cursor = connection.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO stocks (symbol, company_name, exchange_name)
+            VALUES (%s, %s, %s)
+            """,
+            (symbol, company_name, exchange_name),
+        )
+        connection.commit()
+        return True
+    except IntegrityError:
+        connection.rollback()
+        return False
+    finally:
+        cursor.close()
+
+
 def get_user_watchlist(connection: MySQLConnection, user_id: int):
     """Return only the authenticated user's watchlist entries."""
     cursor = connection.cursor(dictionary=True)

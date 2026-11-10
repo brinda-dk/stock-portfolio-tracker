@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from mysql.connector import IntegrityError
 from services.user_service import (
@@ -11,6 +11,7 @@ from services.user_service import (
 )
 from services.stock_service import (
     add_to_watchlist,
+    create_stock,
     get_user_watchlist,
     search_stocks,
 )
@@ -75,6 +76,17 @@ def test_duplicate_watchlist_entry_rolls_back_without_success():
     assert not add_to_watchlist(connection, 42, 7)
     connection.rollback.assert_called_once()
     connection.commit.assert_not_called()
+
+
+def test_create_stock_uses_actual_stock_columns():
+    connection = Mock()
+
+    assert create_stock(connection, "AAPL", "Apple Inc.", "NASDAQ")
+
+    query, parameters = connection.cursor.return_value.execute.call_args.args
+    assert "INSERT INTO stocks (symbol, company_name, exchange_name)" in query
+    assert parameters == ("AAPL", "Apple Inc.", "NASDAQ")
+    connection.commit.assert_called_once()
 
 
 def test_buy_transaction_commits_parameterized_insert():
@@ -239,3 +251,57 @@ def test_holdings_calculate_buy_sell_weighted_average():
     assert holdings[0]["realized_profit_loss"] == Decimal("100")
     assert holdings[0]["market_value"] == Decimal("1875")
     assert holdings[0]["unrealized_profit_loss"] == Decimal("225")
+
+
+def test_requested_buy_buy_sell_sequence_calculates_expected_holding():
+    connection = Mock()
+    cursor = connection.cursor.return_value
+    cursor.fetchall.side_effect = [
+        [
+            {
+                "stock_id": 7,
+                "symbol": "AAPL",
+                "company_name": "Apple Inc.",
+                "transaction_type": "BUY",
+                "quantity": Decimal("10"),
+                "price_per_share": Decimal("100"),
+                "transaction_date": date(2026, 1, 1),
+                "transaction_id": 1,
+            },
+            {
+                "stock_id": 7,
+                "symbol": "AAPL",
+                "company_name": "Apple Inc.",
+                "transaction_type": "BUY",
+                "quantity": Decimal("5"),
+                "price_per_share": Decimal("120"),
+                "transaction_date": date(2026, 1, 2),
+                "transaction_id": 2,
+            },
+            {
+                "stock_id": 7,
+                "symbol": "AAPL",
+                "company_name": "Apple Inc.",
+                "transaction_type": "SELL",
+                "quantity": Decimal("4"),
+                "price_per_share": Decimal("130"),
+                "transaction_date": date(2026, 1, 3),
+                "transaction_id": 3,
+            },
+        ],
+        [],
+    ]
+
+    holding = get_holdings(connection, 42)[0]
+
+    assert holding["current_quantity"] == Decimal("11")
+    currency_precision = Decimal("0.01")
+    assert holding["remaining_cost_basis"].quantize(
+        currency_precision, rounding=ROUND_HALF_UP
+    ) == Decimal("1173.33")
+    assert holding["average_cost"].quantize(
+        currency_precision, rounding=ROUND_HALF_UP
+    ) == Decimal("106.67")
+    assert holding["realized_profit_loss"].quantize(
+        currency_precision, rounding=ROUND_HALF_UP
+    ) == Decimal("93.33")

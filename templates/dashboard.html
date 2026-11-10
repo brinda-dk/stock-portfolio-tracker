@@ -37,13 +37,14 @@
             {% if holdings %}
                 <div class="holdings-table-wrap">
                     <table class="holdings-table">
-                        <thead><tr><th>Security</th><th>Shares</th><th>Avg. cost</th><th>Market price</th><th>Market value</th><th>Unrealized P/L</th></tr></thead>
+                        <thead><tr><th>Security</th><th>Shares</th><th>Avg. cost</th><th>Invested cost</th><th>Market price</th><th>Market value</th><th>Unrealized P/L</th></tr></thead>
                         <tbody>
                             {% for holding in holdings %}
                                 <tr>
                                     <td><span class="stock-symbol">{{ holding.symbol }}</span><small>{{ holding.company_name }}</small></td>
                                     <td>{{ "{:,.6f}".format(holding.current_quantity) }}</td>
                                     <td>${{ "{:,.2f}".format(holding.average_cost) }}</td>
+                                    <td>${{ "{:,.2f}".format(holding.remaining_cost_basis) }}</td>
                                     <td>{{ "${:,.2f}".format(holding.current_price) if holding.current_price is not none else "Price unavailable" }}</td>
                                     <td>{{ "${:,.2f}".format(holding.market_value) if holding.market_value is not none else "—" }}</td>
                                     <td>{{ "${:,.2f}".format(holding.unrealized_profit_loss) if holding.unrealized_profit_loss is not none else "—" }}</td>

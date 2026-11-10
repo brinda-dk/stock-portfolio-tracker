@@ -273,6 +273,38 @@ def create_app() -> Flask:
             has_searched=bool(search_term),
         )
 
+    @app.post("/stocks/add")
+    @login_required
+    def add_stock():
+        from services.database import get_db_connection
+        from services.stock_service import create_stock
+
+        symbol = request.form.get("symbol", "").strip().upper()
+        company_name = request.form.get("company_name", "").strip()
+        exchange_name = request.form.get("exchange_name", "").strip().upper()
+
+        if (
+            not symbol
+            or not company_name
+            or not exchange_name
+            or len(symbol) > 20
+            or len(company_name) > 255
+            or len(exchange_name) > 100
+            or not symbol.replace(".", "").replace("-", "").isalnum()
+        ):
+            flash("Enter a valid symbol, company name, and exchange.", "danger")
+            return redirect(url_for("stock_explorer"))
+
+        connection = get_db_connection()
+        try:
+            if create_stock(connection, symbol, company_name, exchange_name):
+                flash(f"{symbol} was added to the stock database.", "success")
+            else:
+                flash(f"{symbol} already exists in the stock database.", "warning")
+        finally:
+            connection.close()
+        return redirect(url_for("transactions"))
+
     @app.get("/watchlist")
     @login_required
     def watchlist():
