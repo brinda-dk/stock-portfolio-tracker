@@ -32,6 +32,14 @@ def test_dashboard_requires_login():
     assert response.headers["Location"].endswith("/login")
 
 
+def test_history_and_analytics_require_login():
+    app = create_app()
+    client = app.test_client()
+
+    assert client.get("/historical-prices").headers["Location"].endswith("/login")
+    assert client.get("/analytics").headers["Location"].endswith("/login")
+
+
 def test_registration_hashes_password_and_redirects_to_login():
     app = create_app()
     connection = Mock()

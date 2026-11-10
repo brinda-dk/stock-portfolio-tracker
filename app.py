@@ -114,6 +114,7 @@ def create_app() -> Flask:
     @login_required
     def dashboard():
         from services.database import get_db_connection
+        from services.analytics_service import portfolio_analytics
         from services.transaction_service import get_holdings
 
         connection = get_db_connection()
@@ -121,34 +122,107 @@ def create_app() -> Flask:
             holdings = get_holdings(connection, session["user_id"])
         finally:
             connection.close()
-        total_cost = sum(
-            (holding["remaining_cost_basis"] for holding in holdings),
-            Decimal("0"),
-        )
-        total_value = (
-            sum(
-                (holding["market_value"] for holding in holdings),
-                Decimal("0"),
-            )
-            if all(holding["market_value"] is not None for holding in holdings)
-            and holdings
-            else None
-        )
-        unrealized = (
-            total_value - total_cost if total_value is not None else None
-        )
-        realized = sum(
-            (holding["realized_profit_loss"] for holding in holdings),
-            Decimal("0"),
-        )
+        analytics = portfolio_analytics(holdings)
         return render_template(
             "dashboard.html",
             user_name=session["user_name"],
             holdings=holdings,
-            total_cost=total_cost,
-            total_value=total_value,
-            unrealized=unrealized,
-            realized=realized,
+            total_cost=analytics["total_invested"],
+            total_value=analytics["current_value"],
+            unrealized=analytics["unrealized"],
+            realized=analytics["realized"],
+            analytics=analytics,
+        )
+
+    @app.route("/historical-prices", methods=["GET", "POST"])
+    @login_required
+    def historical_prices():
+        from services.analytics_service import (
+            calculate_sma,
+            import_historical_csv,
+            list_historical_prices,
+            prepare_chart_data,
+        )
+        from services.database import get_db_connection
+        from services.transaction_service import list_stocks
+
+        selected_stock = request.values.get("stock_id", "").strip()
+        start_text = request.values.get("start_date", "").strip()
+        end_text = request.values.get("end_date", "").strip()
+        error = None
+        start_date = end_date = None
+        if start_text:
+            try:
+                start_date = date.fromisoformat(start_text)
+            except ValueError:
+                error = "Start date must be a valid date."
+        if end_text:
+            try:
+                end_date = date.fromisoformat(end_text)
+            except ValueError:
+                error = "End date must be a valid date."
+        if start_date and end_date and start_date > end_date:
+            error = "Start date cannot be after end date."
+
+        if request.method == "POST":
+            upload = request.files.get("price_file")
+            if upload is None or not upload.filename.lower().endswith(".csv"):
+                flash("Choose a CSV file to import.", "danger")
+            else:
+                connection = get_db_connection()
+                try:
+                    imported = import_historical_csv(connection, upload.read())
+                except ValueError as exc:
+                    flash(str(exc), "danger")
+                else:
+                    flash(f"Imported {imported} historical price record(s).", "success")
+                finally:
+                    connection.close()
+
+        connection = get_db_connection()
+        try:
+            stocks = list_stocks(connection)
+            prices = []
+            if error is None and selected_stock.isdigit():
+                prices = list_historical_prices(
+                    connection,
+                    int(selected_stock),
+                    start_date,
+                    end_date,
+                )
+        finally:
+            connection.close()
+        if error:
+            flash(error, "danger")
+        chart_data = prepare_chart_data(prices)
+        return render_template(
+            "historical_prices.html",
+            stocks=stocks,
+            prices=prices,
+            chart_data=chart_data,
+            selected_stock=selected_stock,
+            start_date=start_text,
+            end_date=end_text,
+            sma20=calculate_sma(prices, 20),
+            sma50=calculate_sma(prices, 50),
+        )
+
+    @app.get("/analytics")
+    @login_required
+    def analytics():
+        from services.analytics_service import portfolio_analytics
+        from services.database import get_db_connection
+        from services.transaction_service import get_holdings
+
+        connection = get_db_connection()
+        try:
+            holdings = get_holdings(connection, session["user_id"])
+        finally:
+            connection.close()
+        return render_template(
+            "analytics.html",
+            analytics=portfolio_analytics(holdings),
+            holdings=holdings,
         )
 
     @app.route("/transactions", methods=["GET", "POST"])

@@ -170,6 +170,17 @@ em { color: var(--gold-light); font-style: normal; }
 .history-filters { align-items: center; display: grid; gap: 0.65rem; grid-template-columns: 1.2fr 1fr 1fr auto auto; margin: 1.5rem 0; }
 .history-filters select, .history-filters input { font-size: 0.75rem; padding: 0.65rem 0.7rem; }
 .filter-button { background: var(--midnight); border: 1px solid var(--midnight); color: var(--gold-light); cursor: pointer; font-size: 0.7rem; padding: 0.7rem 0.9rem; text-transform: uppercase; }
+.csv-import-card { margin-bottom: 1.5rem; }
+.csv-import-card summary { color: #8f6e32; cursor: pointer; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.csv-form { align-items: center; display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
+.csv-form input { color: #687181; font-size: 0.75rem; }
+.chart-panel { margin-bottom: 1.5rem; }
+.chart-panel canvas { margin-top: 1.5rem; max-height: 360px; }
+.panel-period, .return-note { color: #929bae; font-size: 0.72rem; }
+.analytics-note { margin-top: 1.5rem; }
+.analytics-note h2 { margin: 0 0 0.8rem; }
+.analytics-note p { color: #687181; max-width: 700px; }
+.return-value { color: #8f6e32; display: block; font-size: 2rem; margin-top: 1rem; }
 .clear-filter { color: #8f6e32; font-size: 0.7rem; }
 .transaction-badge { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; }
 .transaction-badge.buy { color: #557b5a; }

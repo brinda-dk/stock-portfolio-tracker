@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Historical Prices | Aurelia{% endblock %}
+
+{% block content %}
+<main class="dashboard-shell">
+    <div class="container">
+        <div class="page-header">
+            <div><p class="eyebrow">MARKET HISTORY</p><h1>Historical <em>prices.</em></h1><p class="dashboard-subtitle">Review recorded closing prices and historical trend indicators.</p></div>
+        </div>
+        <section class="panel-card history-controls">
+            <form class="history-filters" method="get">
+                <select name="stock_id" required aria-label="Select stock">
+                    <option value="">Select a stock</option>
+                    {% for stock in stocks %}<option value="{{ stock.stock_id }}" {% if selected_stock == stock.stock_id|string %}selected{% endif %}>{{ stock.symbol }} — {{ stock.company_name }}</option>{% endfor %}
+                </select>
+                <input type="date" name="start_date" value="{{ start_date }}" aria-label="Start date">
+                <input type="date" name="end_date" value="{{ end_date }}" aria-label="End date">
+                <button class="filter-button" type="submit">View history</button>
+            </form>
+            <p class="form-note">SMA20 and SMA50 are historical indicators calculated from actual closing prices; they are not predictions.</p>
+        </section>
+        <section class="panel-card csv-import-card">
+            <details>
+                <summary>Import historical prices from CSV</summary>
+                <p class="form-note">Required headers: <code>stock_id,price_date,open_price,high_price,low_price,close_price,volume</code>. Existing stock/date duplicates are rejected.</p>
+                <form class="csv-form" method="post" enctype="multipart/form-data">
+                    <input type="file" name="price_file" accept=".csv,text/csv" required>
+                    <button class="filter-button" type="submit">Import CSV</button>
+                </form>
+            </details>
+        </section>
+        {% if prices %}
+            <section class="panel-card chart-panel">
+                <div class="panel-heading"><div><p class="eyebrow">CLOSING PRICE</p><h2>Historical trend</h2></div><span class="panel-period">{{ prices|length }} observations</span></div>
+                <canvas id="history-chart" aria-label="Historical closing price chart"></canvas>
+            </section>
+            <section class="panel-card history-panel">
+                <div class="panel-heading"><div><p class="eyebrow">OBSERVATIONS</p><h2>Price history</h2></div></div>
+                <div class="watchlist-table-wrap">
+                    <table class="watchlist-table"><thead><tr><th>Date</th><th>Close</th><th>Open</th><th>High</th><th>Low</th><th>Volume</th></tr></thead><tbody>
+                    {% for price in prices %}<tr><td>{{ price.price_date.strftime("%d %b %Y") }}</td><td>${{ "{:,.2f}".format(price.close_price) }}</td><td>${{ "{:,.2f}".format(price.open_price) }}</td><td>${{ "{:,.2f}".format(price.high_price) }}</td><td>${{ "{:,.2f}".format(price.low_price) }}</td><td>{{ "{:,}".format(price.volume) }}</td></tr>{% endfor %}
+                    </tbody></table>
+                </div>
+            </section>
+        {% elif selected_stock %}
+            <div class="empty-result panel-card"><span class="empty-icon">◇</span><h2>No historical prices found</h2><p>There are no recorded price observations for this stock and date range.</p></div>
+        {% else %}
+            <div class="empty-result panel-card"><span class="empty-icon">⌕</span><h2>Select a stock</h2><p>Choose a stock above to view recorded historical prices.</p></div>
+        {% endif %}
+    </div>
+</main>
+{% if prices %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script id="history-chart-data" type="application/json">{{ chart_data|tojson }}</script>
+<script>
+const historyData = JSON.parse(document.getElementById("history-chart-data").textContent);
+new Chart(document.getElementById("history-chart"), {
+    type: "line",
+    data: { labels: historyData.labels, datasets: [
+        { label: "Close", data: historyData.close, borderColor: "#8f6e32", backgroundColor: "rgba(212,175,112,.12)", tension: .25 },
+        { label: "SMA20", data: historyData.sma20, borderColor: "#0b1220", spanGaps: true, tension: .25 },
+        { label: "SMA50", data: historyData.sma50, borderColor: "#929bae", spanGaps: true, tension: .25 }
+    ]},
+    options: { responsive: true, interaction: { mode: "index", intersect: false }, scales: { y: { title: { display: true, text: "Price" } }, x: { title: { display: true, text: "Date" } } } }
+});
+</script>
+{% endif %}
+{% endblock %}

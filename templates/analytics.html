@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics | Aurelia{% endblock %}
+
+{% block content %}
+<main class="dashboard-shell">
+    <div class="container">
+        <div class="page-header"><div><p class="eyebrow">PORTFOLIO INTELLIGENCE</p><h1>Measured <em>insight.</em></h1><p class="dashboard-subtitle">A summary built from your saved transactions and recorded market prices.</p></div><a class="quiet-action" href="{{ url_for('historical_prices') }}">View price history <span>→</span></a></div>
+        <section class="metric-grid analytics-metrics">
+            <div class="metric-card"><span class="metric-label">Total invested</span><strong>${{ "{:,.2f}".format(analytics.total_invested) }}</strong><small>Remaining cost basis</small></div>
+            <div class="metric-card"><span class="metric-label">Current value</span><strong>{{ "${:,.2f}".format(analytics.current_value) if analytics.current_value is not none else "—" }}</strong><small>{{ "Recorded closing prices" if analytics.current_value is not none else "Price unavailable" }}</small></div>
+            <div class="metric-card"><span class="metric-label">Unrealized P/L</span><strong>{{ "${:,.2f}".format(analytics.unrealized) if analytics.unrealized is not none else "—" }}</strong><small>Open positions only</small></div>
+            <div class="metric-card"><span class="metric-label">Realized P/L</span><strong>${{ "{:,.2f}".format(analytics.realized) }}</strong><small>Completed sales</small></div>
+        </section>
+        <section class="panel-card analytics-note"><p class="eyebrow">INTERPRETATION</p><h2>Historical context, not prediction.</h2><p>Moving averages describe recorded closing prices over 20 and 50 observations. They do not predict future returns. Percentage return is shown only when current prices are available and is based on the remaining cost basis.</p>
+        {% if analytics.return_percentage is not none %}<strong class="return-value">{{ "{:,.2f}".format(analytics.return_percentage) }}%</strong>{% else %}<strong class="return-value">—</strong><span class="return-note">Return unavailable until every holding has a recorded current price.</span>{% endif %}</section>
+        {% if not holdings %}<div class="empty-result panel-card"><span class="empty-icon">○</span><h2>No analytics yet</h2><p>Record transactions to build portfolio analytics.</p></div>{% endif %}
+    </div>
+</main>
+{% endblock %}
