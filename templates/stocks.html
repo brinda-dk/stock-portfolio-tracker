@@ -28,6 +28,7 @@
             <summary>Add a stock to your local database</summary>
             <p class="form-note">Only add securities you intend to use in this project. Prices and market data are not created here.</p>
             <form class="stock-add-form" method="post" action="{{ url_for('add_stock') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input name="symbol" type="text" maxlength="20" placeholder="Symbol" required>
                 <input name="company_name" type="text" maxlength="255" placeholder="Company name" required>
                 <input name="exchange_name" type="text" maxlength="100" placeholder="Exchange" required>
@@ -56,6 +57,7 @@
                         </div>
                         <p class="data-note">No sector or price field is configured in the current database.</p>
                         <form method="post" action="{{ url_for('add_watchlist', stock_id=stock.stock_id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button class="watch-button" type="submit">Add to watchlist <span>＋</span></button>
                         </form>
                     </article>

@@ -10,6 +10,7 @@
         <h1>Return to your<br><em>perspective.</em></h1>
         <p class="auth-intro">Sign in to continue to your private portfolio view.</p>
         <form method="post" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="field-group">
                 <label for="email">Email address</label>
                 <input id="email" name="email" type="email" autocomplete="email" required value="{{ request.form.get('email', '') }}">

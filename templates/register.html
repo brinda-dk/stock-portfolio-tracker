@@ -10,6 +10,7 @@
         <h1>Build your<br><em>perspective.</em></h1>
         <p class="auth-intro">Create your account and bring your investment thinking into one considered view.</p>
         <form method="post" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="field-group">
                 <label for="name">Full name</label>
                 <input id="name" name="name" type="text" autocomplete="name" required value="{{ request.form.get('name', '') }}">

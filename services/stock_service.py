@@ -1,6 +1,4 @@
 from mysql.connector import IntegrityError, MySQLConnection
-
-
 def search_stocks(connection: MySQLConnection, search_term: str):
     """Return stocks matching a symbol or company name."""
     cursor = connection.cursor(dictionary=True)

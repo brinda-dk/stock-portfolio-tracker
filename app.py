@@ -1,4 +1,6 @@
 import os
+import hmac
+import secrets
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from functools import wraps
@@ -14,7 +16,8 @@ from flask import (
     session,
     url_for,
 )
-from mysql.connector import IntegrityError
+from mysql.connector import Error, IntegrityError
+from werkzeug.exceptions import HTTPException
 
 load_dotenv()
 
@@ -26,6 +29,55 @@ def create_app() -> Flask:
     app.config["DB_PASSWORD"] = os.getenv("DB_PASSWORD", "")
     app.config["DB_NAME"] = os.getenv("DB_NAME", "stock_portfolio")
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY") or os.urandom(32)
+    app.config["SESSION_COOKIE_SECURE"] = os.getenv(
+        "SESSION_COOKIE_SECURE", "0"
+    ).lower() in {"1", "true", "yes"}
+    app.config.update(
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+    )
+
+    @app.context_processor
+    def csrf_context():
+        if "csrf_token" not in session:
+            session["csrf_token"] = secrets.token_urlsafe(32)
+        return {"csrf_token": session["csrf_token"]}
+
+    @app.before_request
+    def validate_csrf():
+        if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+            return None
+        if app.config.get("TESTING"):
+            return None
+        expected = session.get("csrf_token")
+        submitted = request.form.get("csrf_token", "")
+        if not expected or not submitted or not hmac.compare_digest(expected, submitted):
+            return render_template(
+                "error.html",
+                status_code=400,
+                message="Your form session expired. Refresh the page and try again.",
+            ), 400
+        return None
+
+    @app.errorhandler(RuntimeError)
+    def handle_runtime_error(error):
+        app.logger.exception("Application service failure")
+        return render_template(
+            "error.html",
+            status_code=503,
+            message="The database service is temporarily unavailable. Please try again.",
+        ), 503
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(error):
+        if isinstance(error, HTTPException):
+            return error
+        app.logger.exception("Unhandled application error")
+        return render_template(
+            "error.html",
+            status_code=500,
+            message="Something went wrong while loading this page. Please try again.",
+        ), 500
 
     def login_required(view):
         @wraps(view)
@@ -104,7 +156,7 @@ def create_app() -> Flask:
 
         return render_template("login.html")
 
-    @app.get("/logout")
+    @app.post("/logout")
     def logout():
         session.clear()
         flash("You have been logged out.", "success")
@@ -454,4 +506,5 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug = os.getenv("FLASK_DEBUG", "0").lower() in {"1", "true", "yes"}
+    app.run(debug=debug)

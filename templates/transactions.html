@@ -17,6 +17,7 @@
             <div class="panel-card transaction-form-card">
                 <div class="panel-heading"><div><p class="eyebrow">NEW TRANSACTION</p><h2>Record an activity</h2></div></div>
                 <form method="post" class="transaction-form" id="transaction-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="submission_token" value="{{ submission_token }}">
                     <div class="transaction-type" role="group" aria-label="Transaction type">
                         <label><input type="radio" name="transaction_type" value="BUY" checked><span>Buy</span></label>

@@ -1,44 +1,41 @@
 # Stock Portfolio Tracker and Analyzer
 
-A college mini project built with Python Flask, MySQL, HTML, CSS, Bootstrap, and JavaScript.
+A college mini project using Flask, MySQL, HTML, CSS, Bootstrap, and JavaScript.
 
-## Current milestone
+## Features
 
-This milestone adds the MySQL schema, environment-based connection module,
-password hashing helpers, database connection test, and user authentication.
-Stock transaction features will be added later.
-
-The schema creates `users`, `stocks`, `transactions`, `watchlists`, and
-`historical_prices` with primary keys, foreign keys, unique constraints, and
-validation checks. It uses `CREATE TABLE IF NOT EXISTS`, so rerunning it does
-not delete existing rows.
+- Secure registration, login, session authentication, and logout
+- Stock Explorer with validated stock creation
+- User-scoped watchlists
+- Buy and sell transactions with weighted-average cost basis
+- Oversell protection and transaction rollback
+- Holdings, realized P/L, and historical-price-based unrealized P/L
+- Historical OHLCV price browsing with date filters
+- CSV historical-price import with validation and atomic writes
+- SMA20/SMA50 historical indicators and portfolio analytics
+- Royal midnight navy, champagne-gold, and warm ivory responsive UI
+- CSRF protection for state-changing forms
 
 ## Project structure
 
 ```text
-stock-portfolio-tracker/
-├── app.py                  # Flask application and homepage route
-├── requirements.txt        # Python packages
-├── .env.example            # Safe configuration template
-├── database/
-│   └── schema.sql          # MySQL database setup
-├── services/
-│   ├── __init__.py         # Service-layer package
-│   ├── database.py         # Reusable MySQL connection helpers
-│   └── user_service.py     # Password hashing and parameterized user queries
-├── templates/
-│   └── index.html          # Homepage
-├── static/
-│   ├── css/style.css       # Application styles
-│   └── js/script.js        # Browser-side JavaScript
-└── tests/
-    ├── test_app.py         # Homepage test
-    └── test_database.py    # Password and SQL-safety tests
+app.py
+database/schema.sql
+services/
+  analytics_service.py
+  database.py
+  stock_service.py
+  transaction_service.py
+  user_service.py
+templates/
+static/css/style.css
+static/js/script.js
+tests/
+requirements.txt
+.env.example
 ```
 
-## Setup in VS Code
-
-Open the project folder in VS Code, then run these commands in the integrated terminal:
+## Setup in the VS Code terminal
 
 ```powershell
 python -m venv .venv
@@ -47,51 +44,42 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Update `.env` with `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, and a long
-random `SECRET_KEY`. The secret signs Flask login sessions and must not be
-committed. MySQL uses port `3306` by default. `.env` is ignored by Git.
-
-## Create the MySQL database from the VS Code terminal
-
-MySQL Server must be installed and running first. The `mysql` command must be available on PATH.
-
-From the project root, run:
-
-```powershell
-Get-Content .\database\schema.sql | mysql -h localhost -P 3306 -u root -p
-```
-
-Enter your MySQL password when prompted. This command creates the `stock_portfolio` database and all project tables. It does not require MySQL Workbench.
-
-Then test the application connection:
-
-```powershell
-python -m flask --app app test-db
-```
-
-Success prints:
+Edit `.env` locally:
 
 ```text
-MySQL connection successful.
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=your_mysql_password
+DB_NAME=stock_portfolio
+SECRET_KEY=use-a-long-random-secret
+FLASK_DEBUG=0
+SESSION_COOKIE_SECURE=0
 ```
 
-If it fails, check that MySQL Server is running and that the four `DB_*` values in `.env` match your MySQL installation. The command reports a clear configuration/availability error without exposing the password.
+Never commit `.env`. It is excluded by `.gitignore`.
 
-To execute the schema from the VS Code integrated PowerShell terminal, replace
-`localhost` and `root` with the `DB_HOST` and `DB_USER` values from your local
-`.env` file. Enter the password only when prompted:
+Use `SESSION_COOKIE_SECURE=1` when serving the application over HTTPS. Keep
+`FLASK_DEBUG=0` outside local development; the application defaults to debug
+off so Werkzeug's debugger is not exposed accidentally.
+
+## Create the MySQL schema
+
+Make sure MySQL Server is running and `mysql` is available on PATH:
 
 ```powershell
 Get-Content .\database\schema.sql | mysql --host=localhost --user=root --password
 ```
 
-To verify every table was created:
+Enter the password only at the prompt. The schema uses `CREATE TABLE IF NOT EXISTS`
+and does not delete existing rows.
+
+Verify the tables:
 
 ```powershell
 mysql --host=localhost --user=root --password --database=stock_portfolio -e "SHOW TABLES;"
 ```
 
-The output must include:
+Expected tables:
 
 ```text
 historical_prices
@@ -101,35 +89,75 @@ users
 watchlists
 ```
 
-## Test registration and login
+## Verify the database connection
 
-Start the application:
+```powershell
+python -m flask --app app test-db
+```
+
+Expected output:
+
+```text
+MySQL connection successful.
+```
+
+Connection errors show a safe message and never print the password.
+
+## Run the application
 
 ```powershell
 python app.py
 ```
 
-Open these URLs in a browser:
+Open <http://127.0.0.1:5000>.
 
-1. `http://127.0.0.1:5000/register` — enter a name, email, password, and matching confirmation.
-2. `http://127.0.0.1:5000/login` — use the registered email and password.
-3. Successful login redirects to `/dashboard`.
-4. Select **Logout**, then open `/dashboard` again. It should redirect to `/login`.
+Private pages require login:
 
-Passwords are hashed with Werkzeug before being sent to MySQL. Registration
-uses parameterized SQL, and the database unique constraint prevents duplicate
-emails.
+- `/dashboard`
+- `/stocks`
+- `/watchlist`
+- `/transactions`
+- `/historical-prices`
+- `/analytics`
 
-## Run the application
+## Historical-price CSV import
 
-```powershell
-.\.venv\Scripts\python.exe app.py
+Use this exact header row:
+
+```text
+stock_id,price_date,open_price,high_price,low_price,close_price,volume
 ```
 
-Open http://127.0.0.1:5000 in a browser.
+Dates must use `YYYY-MM-DD`. Prices and volume must be non-negative. The importer
+rejects malformed rows, invalid stock IDs, duplicate rows, and existing
+`(stock_id, price_date)` records. A failed import is rolled back.
 
-## Run the test
+SMA20 and SMA50 are calculated only when enough valid observations exist. They
+describe historical prices and are not predictions. Current portfolio value and
+unrealized P/L remain unavailable until reliable historical closing prices exist
+for every held position; purchase prices are never treated as market prices.
+
+## Run tests
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest
+python -m pytest
 ```
+
+The tests use mocks and isolated fixtures; they do not delete project data.
+
+Syntax check:
+
+```powershell
+python -m py_compile app.py services\analytics_service.py services\database.py services\user_service.py services\stock_service.py services\transaction_service.py
+```
+
+## Manual smoke test
+
+1. Register a new account and log in.
+2. Add a stock from **Stocks**.
+3. Add a buy transaction and verify it appears in history and holdings.
+4. Sell part of the holding; attempt to oversell and confirm it is rejected.
+5. Add historical-price CSV rows and open **History**.
+6. Apply a date filter and confirm the chart uses only recorded rows.
+7. Open **Analytics** and confirm unavailable prices are shown as unavailable.
+8. Log out and confirm private URLs redirect to `/login`.

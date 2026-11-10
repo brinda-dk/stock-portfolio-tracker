@@ -1,13 +1,18 @@
 from unittest.mock import Mock, patch
 
-from app import create_app
+from app import create_app as build_app
 from mysql.connector import IntegrityError
 from services.user_service import hash_user_password
 
 
+def create_app():
+    app = build_app()
+    app.config["TESTING"] = True
+    return app
+
+
 def test_homepage_loads():
     app = create_app()
-    app.config["TESTING"] = True
 
     response = app.test_client().get("/")
 
@@ -109,7 +114,7 @@ def test_login_sets_session_and_logout_clears_it():
             data={"email": "student@example.com", "password": "correct-password"},
         )
         dashboard_response = client.get("/dashboard")
-        logout_response = client.get("/logout")
+        logout_response = client.post("/logout")
         protected_response = client.get("/dashboard")
 
     assert login_response.status_code == 302
@@ -118,6 +123,20 @@ def test_login_sets_session_and_logout_clears_it():
     assert b"Welcome, Student" in dashboard_response.data
     assert logout_response.status_code == 302
     assert protected_response.headers["Location"].endswith("/login")
+
+
+def test_state_changing_request_requires_csrf_token_outside_testing():
+    app = create_app()
+    app.config["TESTING"] = False
+    client = app.test_client()
+    with client.session_transaction() as session:
+        session["user_id"] = 12
+        session["user_name"] = "Student"
+
+    response = client.post("/watchlist/add/7")
+
+    assert response.status_code == 400
+    assert b"form session expired" in response.data
 
 
 def test_stock_and_watchlist_routes_require_login():
@@ -162,6 +181,24 @@ def test_stock_explorer_shows_empty_database_message():
     assert response.status_code == 200
     assert b"No stocks available yet" in response.data
     assert b"Add a stock" in response.data
+
+
+
+
+
+def test_unexpected_errors_are_logged_without_exposing_details(caplog):
+    app = create_app()
+
+    @app.get("/test-unexpected-error")
+    def unexpected_error():
+        raise ValueError("synthetic failure")
+
+    with caplog.at_level("ERROR"):
+        response = app.test_client().get("/test-unexpected-error")
+
+    assert response.status_code == 500
+    assert b"synthetic failure" not in response.data
+    assert "Unhandled application error" in caplog.text
 
 
 def test_add_stock_uses_parameterized_create_and_redirects_to_transactions():

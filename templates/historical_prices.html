@@ -25,6 +25,7 @@
                 <summary>Import historical prices from CSV</summary>
                 <p class="form-note">Required headers: <code>stock_id,price_date,open_price,high_price,low_price,close_price,volume</code>. Existing stock/date duplicates are rejected.</p>
                 <form class="csv-form" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="file" name="price_file" accept=".csv,text/csv" required>
                     <button class="filter-button" type="submit">Import CSV</button>
                 </form>
