@@ -113,6 +113,82 @@ def create_app() -> Flask:
     def dashboard():
         return render_template("dashboard.html", user_name=session["user_name"])
 
+    @app.get("/stocks")
+    @login_required
+    def stock_explorer():
+        from services.database import get_db_connection
+        from services.stock_service import search_stocks
+
+        search_term = request.args.get("q", "").strip()
+        stocks = []
+        if len(search_term) > 100:
+            flash("Search text must be 100 characters or fewer.", "danger")
+        else:
+            connection = get_db_connection()
+            try:
+                stocks = search_stocks(connection, search_term)
+            finally:
+                connection.close()
+        return render_template(
+            "stocks.html",
+            stocks=stocks,
+            search_term=search_term,
+            has_searched=bool(search_term),
+        )
+
+    @app.get("/watchlist")
+    @login_required
+    def watchlist():
+        from services.database import get_db_connection
+        from services.stock_service import get_user_watchlist
+
+        connection = get_db_connection()
+        try:
+            entries = get_user_watchlist(connection, session["user_id"])
+        finally:
+            connection.close()
+        return render_template("watchlist.html", entries=entries)
+
+    @app.post("/watchlist/add/<int:stock_id>")
+    @login_required
+    def add_watchlist(stock_id: int):
+        from services.database import get_db_connection
+        from services.stock_service import add_to_watchlist, find_stock_by_id
+
+        connection = get_db_connection()
+        try:
+            stock = find_stock_by_id(connection, stock_id)
+            if stock is None:
+                flash("That stock could not be found.", "danger")
+            elif add_to_watchlist(connection, session["user_id"], stock_id):
+                flash(f"{stock['symbol']} was added to your watchlist.", "success")
+            else:
+                flash(f"{stock['symbol']} is already on your watchlist.", "warning")
+        finally:
+            connection.close()
+        return redirect(url_for("stock_explorer"))
+
+    @app.post("/watchlist/remove/<int:stock_id>")
+    @login_required
+    def remove_watchlist(stock_id: int):
+        from services.database import get_db_connection
+        from services.stock_service import remove_from_watchlist
+
+        connection = get_db_connection()
+        try:
+            removed = remove_from_watchlist(
+                connection,
+                session["user_id"],
+                stock_id,
+            )
+        finally:
+            connection.close()
+        if removed:
+            flash("Stock removed from your watchlist.", "success")
+        else:
+            flash("That stock was not in your watchlist.", "warning")
+        return redirect(url_for("watchlist"))
+
     @app.cli.command("test-db")
     def test_db():
         """Check the configured MySQL connection."""

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Watchlist | Aurelia{% endblock %}
+
+{% block content %}
+<main class="dashboard-shell">
+    <div class="container">
+        <div class="page-header">
+            <div>
+                <p class="eyebrow">YOUR SHORTLIST</p>
+                <h1>Personal <em>watchlist.</em></h1>
+                <p class="dashboard-subtitle">Keep the companies you are considering close at hand.</p>
+            </div>
+            <a class="quiet-action" href="{{ url_for('stock_explorer') }}">Explore stocks <span>→</span></a>
+        </div>
+
+        {% if entries %}
+            <section class="panel-card watchlist-panel">
+                <div class="watchlist-table-wrap">
+                    <table class="watchlist-table">
+                        <thead>
+                            <tr><th>Security</th><th>Company</th><th>Exchange</th><th>Added</th><th><span class="visually-hidden">Actions</span></th></tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in entries %}
+                                <tr>
+                                    <td><span class="stock-symbol">{{ entry.symbol }}</span></td>
+                                    <td>{{ entry.company_name }}</td>
+                                    <td><span class="exchange-tag">{{ entry.exchange_name }}</span></td>
+                                    <td class="muted-cell">{{ entry.added_at.strftime("%d %b %Y") if entry.added_at else "—" }}</td>
+                                    <td class="text-end">
+                                        <form method="post" action="{{ url_for('remove_watchlist', stock_id=entry.stock_id) }}">
+                                            <button class="remove-button" type="submit">Remove</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        {% else %}
+            <div class="empty-result panel-card">
+                <span class="empty-icon">◇</span>
+                <h2>Your watchlist is quiet</h2>
+                <p>Explore the stock database and save securities you want to follow.</p>
+                <a class="btn-gold empty-action" href="{{ url_for('stock_explorer') }}">Explore stocks <span>→</span></a>
+            </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

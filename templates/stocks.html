@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Explorer | Aurelia{% endblock %}
+
+{% block content %}
+<main class="dashboard-shell">
+    <div class="container">
+        <div class="page-header">
+            <div>
+                <p class="eyebrow">MARKET DISCOVERY</p>
+                <h1>Stock <em>explorer.</em></h1>
+                <p class="dashboard-subtitle">Browse the securities available in your portfolio database.</p>
+            </div>
+            <a class="quiet-action" href="{{ url_for('watchlist') }}">View watchlist <span>→</span></a>
+        </div>
+
+        <section class="panel-card explorer-panel">
+            <form class="search-form" method="get" action="{{ url_for('stock_explorer') }}">
+                <label for="stock-search">Search by symbol or company name</label>
+                <div class="search-row">
+                    <input id="stock-search" name="q" type="search" maxlength="100" value="{{ search_term }}" placeholder="Try AAPL or Apple">
+                    <button class="btn-gold" type="submit">Search <span>→</span></button>
+                </div>
+            </form>
+        </section>
+
+        {% if has_searched and not stocks %}
+            <div class="empty-result panel-card">
+                <span class="empty-icon">◇</span>
+                <h2>No matches found</h2>
+                <p>Try a different symbol or company name. Search results come from your local stock database.</p>
+            </div>
+        {% elif stocks %}
+            <section class="stock-grid" aria-label="Stock search results">
+                {% for stock in stocks %}
+                    <article class="stock-card">
+                        <div class="stock-card-top">
+                            <span class="stock-symbol">{{ stock.symbol }}</span>
+                            <span class="exchange-tag">{{ stock.exchange_name }}</span>
+                        </div>
+                        <h2>{{ stock.company_name }}</h2>
+                        <div class="stock-details">
+                            <div><span>Sector</span><strong>Not available</strong></div>
+                            <div><span>Price</span><strong>Not available</strong></div>
+                        </div>
+                        <p class="data-note">No sector or price field is configured in the current database.</p>
+                        <form method="post" action="{{ url_for('add_watchlist', stock_id=stock.stock_id) }}">
+                            <button class="watch-button" type="submit">Add to watchlist <span>＋</span></button>
+                        </form>
+                    </article>
+                {% endfor %}
+            </section>
+        {% else %}
+            <div class="empty-result panel-card">
+                <span class="empty-icon">⌕</span>
+                <h2>Start exploring</h2>
+                <p>Search your available stocks by symbol or company name.</p>
+            </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

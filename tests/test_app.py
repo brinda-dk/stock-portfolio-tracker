@@ -107,3 +107,69 @@ def test_login_sets_session_and_logout_clears_it():
     assert b"Welcome, Student" in dashboard_response.data
     assert logout_response.status_code == 302
     assert protected_response.headers["Location"].endswith("/login")
+
+
+def test_stock_and_watchlist_routes_require_login():
+    app = create_app()
+    client = app.test_client()
+
+    assert client.get("/stocks").headers["Location"].endswith("/login")
+    assert client.get("/watchlist").headers["Location"].endswith("/login")
+    assert client.post("/watchlist/add/1").headers["Location"].endswith("/login")
+    assert client.post("/watchlist/remove/1").headers["Location"].endswith("/login")
+
+
+def test_stock_explorer_search_uses_database_results():
+    app = create_app()
+    connection = Mock()
+    connection.cursor.return_value.fetchall.return_value = [
+        {
+            "stock_id": 7,
+            "symbol": "AAPL",
+            "company_name": "Apple Inc.",
+            "exchange_name": "NASDAQ",
+        }
+    ]
+
+    with patch("services.database.get_db_connection", return_value=connection):
+        client = client_session(app, user_id=12)
+        response = client.get("/stocks?q=Apple")
+
+    assert response.status_code == 200
+    assert b"Apple Inc." in response.data
+    assert b"AAPL" in response.data
+
+
+def test_add_watchlist_validates_stock_and_uses_current_user():
+    app = create_app()
+    connection = Mock()
+    with (
+        patch("services.database.get_db_connection", return_value=connection),
+        patch(
+            "services.stock_service.find_stock_by_id",
+            return_value={
+                "stock_id": 7,
+                "symbol": "AAPL",
+                "company_name": "Apple Inc.",
+                "exchange_name": "NASDAQ",
+            },
+        ),
+        patch("services.stock_service.add_to_watchlist", return_value=True) as add,
+    ):
+        client = app.test_client()
+        with client.session_transaction() as session:
+            session["user_id"] = 12
+            session["user_name"] = "Student"
+        response = client.post("/watchlist/add/7")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/stocks")
+    add.assert_called_once_with(connection, 12, 7)
+
+
+def client_session(app, user_id):
+    client = app.test_client()
+    with client.session_transaction() as session:
+        session["user_id"] = user_id
+        session["user_name"] = "Student"
+    return client

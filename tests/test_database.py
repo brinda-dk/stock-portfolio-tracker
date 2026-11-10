@@ -1,9 +1,15 @@
 from unittest.mock import Mock
 
+from mysql.connector import IntegrityError
 from services.user_service import (
     create_user,
     hash_user_password,
     verify_user_password,
+)
+from services.stock_service import (
+    add_to_watchlist,
+    get_user_watchlist,
+    search_stocks,
 )
 
 
@@ -29,3 +35,36 @@ def test_create_user_uses_parameterized_query():
     assert parameters[1] == "student@example.com"
     assert parameters[2] != "secret"
     connection.commit.assert_called_once()
+
+
+def test_search_stocks_uses_parameterized_symbol_and_company_filters():
+    connection = Mock()
+    connection.cursor.return_value.fetchall.return_value = []
+
+    search_stocks(connection, "apple")
+
+    query, parameters = connection.cursor.return_value.execute.call_args.args
+    assert "symbol LIKE %s OR company_name LIKE %s" in query
+    assert parameters == ("%apple%", "%apple%")
+
+
+def test_watchlist_query_is_scoped_to_user():
+    connection = Mock()
+    connection.cursor.return_value.fetchall.return_value = []
+
+    get_user_watchlist(connection, 42)
+
+    query, parameters = connection.cursor.return_value.execute.call_args.args
+    assert "WHERE w.user_id = %s" in query
+    assert parameters == (42,)
+
+
+def test_duplicate_watchlist_entry_rolls_back_without_success():
+    connection = Mock()
+    connection.cursor.return_value.execute.side_effect = IntegrityError(
+        "duplicate entry"
+    )
+
+    assert not add_to_watchlist(connection, 42, 7)
+    connection.rollback.assert_called_once()
+    connection.commit.assert_not_called()
